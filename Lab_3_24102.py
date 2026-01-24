@@ -284,6 +284,8 @@ def main():
     print("A1 Results:", dot_res)
     
     # A2: STATISTICAL DATA
+    mean0, std0 = class_stat(features, labels, 0)
+    mean1, std1 = class_stat(features, labels, 1)
     dist = class_dist(mean0, mean1)
     print("A2 Means:", mean0.tolist(), mean1.tolist())
     print("A2 Stds:", std0.tolist(), std1.tolist())
