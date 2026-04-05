@@ -24,10 +24,6 @@ from sklearn.neural_network import MLPClassifier
 from xgboost import XGBClassifier
 from catboost import CatBoostClassifier
 
-import shap
-import lime
-import lime.lime_tabular
-
 # ─────────────────────────────────────────────
 # 1. LOAD DATA
 # ─────────────────────────────────────────────
