@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from sklearn.neural_network import MLPClassifier
 from numpy.linalg import pinv
+from sklearn.neural_network import MLPClassifier
 
 
 # -----------------------------
@@ -20,6 +20,7 @@ def bipolar_step(x):
 
 
 def sigmoid(x):
+    x = np.clip(x, -500, 500)
     return 1 / (1 + np.exp(-x))
 
 
@@ -28,11 +29,11 @@ def tanh(x):
 
 
 def relu(x):
-    return max(0, x)
+    return np.maximum(0, x)
 
 
 def leaky_relu(x):
-    return x if x > 0 else 0.01 * x
+    return np.where(x > 0, x, 0.01 * x)
 
 
 def compute_error(y, y_pred):
@@ -40,13 +41,13 @@ def compute_error(y, y_pred):
 
 
 # -----------------------------
-# PERCEPTRON TRAINING
+# A2: PERCEPTRON
 # -----------------------------
 def train_perceptron(X, y, w, b, lr, activation, max_epochs=1000, threshold=0.002):
     errors = []
 
     for epoch in range(max_epochs):
-        total_error = 0
+        total_error = 0.0
 
         for i in range(len(X)):
             net = summation_unit(X[i], w, b)
@@ -67,7 +68,7 @@ def train_perceptron(X, y, w, b, lr, activation, max_epochs=1000, threshold=0.00
 
 
 # -----------------------------
-# A3: ACTIVATION COMPARISON
+# A3
 # -----------------------------
 def compare_activations(X, y, w, b, lr):
     activations = {
@@ -78,7 +79,6 @@ def compare_activations(X, y, w, b, lr):
     }
 
     results = {}
-
     for name, fn in activations.items():
         _, _, _, epochs = train_perceptron(X, y, w.copy(), b, lr, fn)
         results[name] = epochs
@@ -87,7 +87,7 @@ def compare_activations(X, y, w, b, lr):
 
 
 # -----------------------------
-# A4: LEARNING RATE ANALYSIS
+# A4
 # -----------------------------
 def learning_rate_experiment(X, y, w, b):
     rates = np.arange(0.1, 1.1, 0.1)
@@ -101,40 +101,41 @@ def learning_rate_experiment(X, y, w, b):
 
 
 # -----------------------------
-# A6: CUSTOMER DATASET
+# A6
 # -----------------------------
 def customer_dataset():
     X = np.array([
         [20, 6, 2, 386], [16, 3, 6, 289], [27, 6, 2, 393], [19, 1, 2, 110],
         [24, 4, 2, 280], [22, 1, 5, 167], [15, 4, 2, 271], [18, 4, 2, 274],
         [21, 1, 4, 148], [16, 2, 4, 198]
-    ])
-    y = np.array([1, 1, 1, 0, 1, 0, 1, 1, 0, 0])
+    ], dtype=float)
+
+    y = np.array([1, 1, 1, 0, 1, 0, 1, 1, 0, 0], dtype=float)
+
     return X, y
 
 
 # -----------------------------
-# A7: PSEUDO-INVERSE METHOD
+# A7
 # -----------------------------
 def pseudo_inverse_solution(X, y):
     X_aug = np.c_[np.ones(len(X)), X]
-    weights = pinv(X_aug).dot(y)
-    return weights
+    return pinv(X_aug).dot(y)
 
 
 # -----------------------------
-# A8: BACKPROPAGATION NETWORK
+# A8
 # -----------------------------
 def train_backprop(X, y, lr=0.05, max_epochs=1000, threshold=0.002):
     np.random.seed(0)
 
-    W1 = np.random.rand(2, 2)
+    W1 = np.random.rand(X.shape[1], 2)
     W2 = np.random.rand(2, 1)
 
     errors = []
 
     for epoch in range(max_epochs):
-        total_error = 0
+        total_error = 0.0
 
         for i in range(len(X)):
             x = X[i].reshape(1, -1)
@@ -144,7 +145,7 @@ def train_backprop(X, y, lr=0.05, max_epochs=1000, threshold=0.002):
             output = sigmoid(np.dot(hidden, W2))
 
             err = target - output
-            total_error += float(err ** 2)
+            total_error += (err ** 2).item()
 
             d_output = err * output * (1 - output)
             d_hidden = d_output.dot(W2.T) * hidden * (1 - hidden)
@@ -152,7 +153,7 @@ def train_backprop(X, y, lr=0.05, max_epochs=1000, threshold=0.002):
             W2 += lr * hidden.T.dot(d_output)
             W1 += lr * x.T.dot(d_hidden)
 
-        errors.append(float(total_error))
+        errors.append(total_error)
 
         if total_error <= threshold:
             break
@@ -161,33 +162,73 @@ def train_backprop(X, y, lr=0.05, max_epochs=1000, threshold=0.002):
 
 
 # -----------------------------
-# OPTIONAL O1
+# A9
 # -----------------------------
-def optional_learning_rate_analysis(X, y, w, b):
+def run_A9_XOR(X, y_xor, w, b, lr):
+    _, _, errors, epochs = train_perceptron(X, y_xor, w.copy(), b, lr, step)
+    return errors, epochs
+
+
+# -----------------------------
+# A10
+# -----------------------------
+def train_perceptron_two_outputs(X, y, lr, max_epochs=1000, threshold=0.002):
+    y_encoded = np.array([[1, 0] if val == 0 else [0, 1] for val in y], dtype=float)
+
+    w = np.random.rand(X.shape[1], 2)
+    b = np.zeros(2)
+
+    errors = []
+
+    for epoch in range(max_epochs):
+        total_error = 0.0
+
+        for i in range(len(X)):
+            net = np.dot(X[i], w) + b
+            output = np.array([step(net[0]), step(net[1])])
+
+            err = y_encoded[i] - output
+
+            w += lr * np.outer(X[i], err)
+            b += lr * err
+
+            total_error += np.sum(err ** 2)
+
+        errors.append(total_error)
+
+        if total_error <= threshold:
+            break
+
+    return w, b, errors, epoch + 1
+
+
+# -----------------------------
+# O1
+# -----------------------------
+def optional_O1(X, y, w, b):
     rates = np.arange(0.1, 1.1, 0.1)
-    results = {"Sigmoid": [], "ReLU": []}
+    sig, relu_vals = [], []
 
     for lr in rates:
-        _, _, _, ep_sig = train_perceptron(
+        _, _, _, ep1 = train_perceptron(
             X, y, w.copy(), b, lr,
             lambda x: 1 if sigmoid(x) >= 0.5 else 0
         )
-
-        _, _, _, ep_relu = train_perceptron(
+        _, _, _, ep2 = train_perceptron(
             X, y, w.copy(), b, lr,
             lambda x: 1 if relu(x) > 0 else 0
         )
 
-        results["Sigmoid"].append(ep_sig)
-        results["ReLU"].append(ep_relu)
+        sig.append(ep1)
+        relu_vals.append(ep2)
 
-    return rates, results
+    return rates, sig, relu_vals
 
 
 # -----------------------------
-# OPTIONAL O2
+# O2
 # -----------------------------
-def optional_activation_comparison(X, y, w, b, lr):
+def optional_O2(X, y, w, b, lr):
     activations = {
         "Sigmoid": lambda x: 1 if sigmoid(x) >= 0.5 else 0,
         "ReLU": lambda x: 1 if relu(x) > 0 else 0,
@@ -196,18 +237,17 @@ def optional_activation_comparison(X, y, w, b, lr):
     }
 
     results = {}
-
     for name, fn in activations.items():
-        _, _, _, epochs = train_perceptron(X, y, w.copy(), b, lr, fn)
-        results[name] = epochs
+        _, _, _, ep = train_perceptron(X, y, w.copy(), b, lr, fn)
+        results[name] = ep
 
     return results
 
 
 # -----------------------------
-# OPTIONAL O3
+# O3
 # -----------------------------
-def optional_backprop_experiment(X, y):
+def optional_O3(X, y):
     learning_rates = [0.01, 0.05, 0.1, 0.5]
     results = {}
 
@@ -219,79 +259,113 @@ def optional_backprop_experiment(X, y):
 
 
 # -----------------------------
-# MAIN FUNCTION
+# MAIN
 # -----------------------------
 def main():
 
-    # AND Gate
-    X = np.array([[0, 0], [0, 1], [1, 0], [1, 1]])
-    y = np.array([0, 0, 0, 1])
+    X = np.array([[0, 0], [0, 1], [1, 0], [1, 1]], dtype=float)
+    y_and = np.array([0, 0, 0, 1], dtype=float)
+    y_xor = np.array([0, 1, 1, 0], dtype=float)
 
-    w = np.array([0.2, -0.75])
-    b = 10
+    w = np.array([0.2, -0.75], dtype=float)
+    b = 10.0
     lr = 0.05
 
     # A2
-    _, _, err, epochs = train_perceptron(X, y, w.copy(), b, lr, step)
+    _, _, errors, epochs = train_perceptron(X, y_and, w.copy(), b, lr, step)
     print("A2 Epochs:", epochs)
-    plt.plot(err)
-    plt.title("A2 Error vs Epochs")
+
+    plt.figure(figsize=(6,4))
+    plt.plot(errors)
+    plt.title("A2: Error vs Epochs (AND Gate - Step Activation)")
+    plt.xlabel("Epochs")
+    plt.ylabel("Sum Squared Error")
+    plt.grid(True)
     plt.show()
 
     # A3
-    print("A3 Activation Comparison:", compare_activations(X, y, w.copy(), b, lr))
+    print("A3:", compare_activations(X, y_and, w.copy(), b, lr))
 
     # A4
-    rates, ep = learning_rate_experiment(X, y, w.copy(), b)
-    plt.plot(rates, ep)
-    plt.title("A4 Learning Rate vs Epochs")
+    rates, ep = learning_rate_experiment(X, y_and, w.copy(), b)
+
+    plt.figure(figsize=(6,4))
+    plt.plot(rates, ep, marker='o')
+    plt.title("A4: Learning Rate vs Epochs (AND Gate)")
+    plt.xlabel("Learning Rate")
+    plt.ylabel("Epochs to Converge")
+    plt.grid(True)
     plt.show()
 
-    # A5 XOR
-    y_xor = np.array([0, 1, 1, 0])
+    # A5
     _, _, _, xor_epochs = train_perceptron(X, y_xor, w.copy(), b, lr, step)
     print("A5 XOR Epochs:", xor_epochs)
 
-    # A6 Customer Data
+    # A6
     Xc, yc = customer_dataset()
-    w_c = np.random.rand(Xc.shape[1])
-
     _, _, _, cust_epochs = train_perceptron(
-        Xc, yc, w_c, 0, 0.01,
+        Xc, yc, np.random.rand(Xc.shape[1]), 0.0, 0.01,
         lambda x: 1 if sigmoid(x) >= 0.5 else 0
     )
-    print("A6 Customer Epochs:", cust_epochs)
+    print("A6:", cust_epochs)
 
     # A7
-    print("A7 Pseudo-inverse Weights:", pseudo_inverse_solution(Xc, yc))
+    print("A7:", pseudo_inverse_solution(Xc, yc))
 
-    # A8 Backprop
-    _, _, err_bp = train_backprop(X, y)
+    # A8
+    _, _, err_bp = train_backprop(X, y_and)
+
+    plt.figure(figsize=(6,4))
     plt.plot(err_bp)
-    plt.title("A8 Backprop Error")
+    plt.title("A8: Backpropagation Error vs Epochs (AND Gate)")
+    plt.xlabel("Epochs")
+    plt.ylabel("Sum Squared Error")
+    plt.grid(True)
+    plt.show()
+
+    # A9
+    _, ep9 = run_A9_XOR(X, y_xor, w.copy(), b, lr)
+    print("A9:", ep9)
+
+    # A10
+    _, _, err10, ep10 = train_perceptron_two_outputs(X, y_and, lr)
+    print("A10:", ep10)
+
+    plt.figure(figsize=(6,4))
+    plt.plot(err10)
+    plt.title("A10: Error vs Epochs (Two Output Perceptron)")
+    plt.xlabel("Epochs")
+    plt.ylabel("Sum Squared Error")
+    plt.grid(True)
     plt.show()
 
     # A11
-    clf = MLPClassifier(hidden_layer_sizes=(2,), max_iter=1000)
-    clf.fit(X, y)
-    print("A11 AND Prediction:", clf.predict(X))
+    clf = MLPClassifier(hidden_layer_sizes=(2,), max_iter=2000)
+
+    clf.fit(X, y_and)
+    print("A11 AND:", clf.predict(X))
 
     clf.fit(X, y_xor)
-    print("A11 XOR Prediction:", clf.predict(X))
+    print("A11 XOR:", clf.predict(X))
 
-    # Optional O1
-    rates, results = optional_learning_rate_analysis(X, y, w.copy(), b)
-    plt.plot(rates, results["Sigmoid"], label="Sigmoid")
-    plt.plot(rates, results["ReLU"], label="ReLU")
+    # O1
+    r, s, r2 = optional_O1(X, y_and, w.copy(), b)
+
+    plt.figure(figsize=(6,4))
+    plt.plot(r, s, marker='o', label="Sigmoid Activation")
+    plt.plot(r, r2, marker='s', label="ReLU Activation")
+    plt.title("O1: Learning Rate vs Epochs for Different Activations")
+    plt.xlabel("Learning Rate")
+    plt.ylabel("Epochs to Converge")
     plt.legend()
-    plt.title("O1 Learning Rate Analysis")
+    plt.grid(True)
     plt.show()
 
-    # Optional O2
-    print("O2 Activation Comparison:", optional_activation_comparison(X, y, w.copy(), b, lr))
+    # O2
+    print("O2:", optional_O2(X, y_and, w.copy(), b, lr))
 
-    # Optional O3
-    print("O3 Backprop Learning Rate Analysis:", optional_backprop_experiment(X, y))
+    # O3
+    print("O3:", optional_O3(X, y_and))
 
 
 if __name__ == "__main__":
